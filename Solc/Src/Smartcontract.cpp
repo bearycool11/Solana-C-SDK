@@ -5,19 +5,16 @@
 #include <solana_sdk.h>
 #include <vector>
 #include <cstring>
-#include <cstdio>
 
 namespace solc {
 
 ///
-/// A local Ledger implementation for the smart contract,
-/// wiring sol_log, account writes, and bug-bounty transfers.
+/// A concrete LedgerInterface for on-chain use via the Solana C SDK
 ///
 class SC_Ledger : public LedgerInterface {
 public:
     SC_Ledger(SolAccountInfo* accounts, uint64_t num_accounts)
       : accounts_(accounts), num_accounts_(num_accounts) {}
-
     ~SC_Ledger() override = default;
 
     void writeAccount(uint64_t pubkey, const std::vector<uint8_t>& data) override {
@@ -26,7 +23,7 @@ public:
                 if (accounts_[i].data_len >= data.size()) {
                     sol_memcpy(accounts_[i].data, data.data(), data.size());
                 } else {
-                    sol_log("writeAccount: data too large");
+                    sol_log("writeAccount: buffer too small");
                 }
                 return;
             }
@@ -39,8 +36,7 @@ public:
     }
 
     void sendBugReward(uint64_t pubkey, uint64_t lamports) override {
-        // Assume accounts_[0] is the fee-payer (signer & writable)
-        int64_t payer_idx = 0;
+        // find hunter index
         int64_t hunter_idx = -1;
         for (uint64_t i = 0; i < num_accounts_; ++i) {
             if (memcmp(accounts_[i].key, &pubkey, sizeof(pubkey)) == 0) {
@@ -49,13 +45,12 @@ public:
             }
         }
         if (hunter_idx < 0) {
-            sol_log("sendBugReward: hunter account not found");
+            sol_log("sendBugReward: hunter not found");
             return;
         }
-
-        // Build a System Program transfer instruction
+        // payer is account 0
         SolAccountMeta metas[2] = {
-            { accounts_[payer_idx].key, /*is_signer=*/true,  /*is_writable=*/true  },
+            { accounts_[0].key, /*is_signer=*/true,  /*is_writable=*/true  },
             { accounts_[hunter_idx].key,/*is_signer=*/false, /*is_writable=*/true }
         };
         SolInstruction ix = {
@@ -73,34 +68,51 @@ private:
     uint64_t        num_accounts_;
 };
 
+/// KINDLING: hash `data[0..len)` into `out[32]`
+void SmartContract::KINDLING(const uint8_t* data, uint64_t len, uint8_t out[32]) {
+    if (sol_sha256(data, len, out, 32) != SUCCESS) {
+        sol_log("KINDLING: sha256 failed");
+    }
+}
+
+/// TORCHING: hash `data[0..len)` into `out[32]`
+void SmartContract::TORCHING(const uint8_t* data, uint64_t len, uint8_t out[32]) {
+    if (sol_sha256(data, len, out, 32) != SUCCESS) {
+        sol_log("TORCHING: sha256 failed");
+    }
+}
+
 uint64_t SmartContract::entrypoint(const uint8_t* input) {
-    // 1) Deserialize parameters
+    // 1) Deserialize instruction
     SolParameters params;
     if (sol_deserialize(input, &params)) {
         return ERROR_INVALID_ARGUMENT;
     }
 
-    // 2) Extract current slot (blockHeight)
-    //    TODO: replace with real Clock sysvar extraction
-    uint64_t slot = 0;
-    for (uint64_t i = 0; i < params.num_accounts; ++i) {
-        // naive example: use lamports of first account as slot
-        slot = params.ka[0].lamports;
-        break;
-    }
+    // 2) Extract “slot” (placeholder: lamports of account 0)
+    uint64_t slot = params.ka[0].lamports;
 
-    // 3) Initialize FeeCalculator (5k lamports/base, 50% burn)
-    FeeCalculator fc(5000, 0.5);
+    // 3) Compute & log KINDLING hash of slot
+    uint8_t kindling_hash[32];
+    KINDLING(reinterpret_cast<const uint8_t*>(&slot), sizeof(slot), kindling_hash);
+    sol_log_data(kindling_hash, 32);
 
-    // 4) Build and populate BurnBlock
-    BurnBlock bb(slot, fc);
-    // TODO: parse real fee events from `params`
-    // Example placeholder:
+    // 4) Set up fee‐burn pipeline
+    FeeCalculator fc(/*baseFeeRate=*/5000, /*burnRatio=*/0.5);
+    BurnBlock   bb(slot, fc);
+
+    // TODO: parse real fee events from params.ka or sysvar; demo placeholder:
     bb.recordFee(/*account=*/1234, /*lamports=*/10'000);
 
-    // 5) Execute with our on-chain ledger
+    // 5) Execute (includes BugWatcher logging + rewards)
     SC_Ledger ledger(params.ka, params.num_accounts);
     bb.execute(ledger);
+
+    // 6) Compute & log TORCHING hash of burned total
+    uint64_t burned = bb.getBurnedTotal();
+    uint8_t torch_hash[32];
+    TORCHING(reinterpret_cast<const uint8_t*>(&burned), sizeof(burned), torch_hash);
+    sol_log_data(torch_hash, 32);
 
     return SUCCESS;
 }
