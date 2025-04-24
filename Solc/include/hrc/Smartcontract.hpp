@@ -10,9 +10,7 @@ public:
     static uint64_t entrypoint(const uint8_t* input);
 };
 
-} // namespace solc
-#pragma once
-#include <cstdint>
+}
 
 namespace solc {
 
