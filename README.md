@@ -47,3 +47,70 @@ Set the Solana SDK include path:
 
 ```bash
 export SOLANA_SDK_INCLUDE=/path/to/solana/sdk/include
+Solana-C-SDK
+
+v2.0 “Interchain” Release – June 2025
+
+A high-performance C/C++ toolkit for Solana on-chain programs and off-chain clients. This version adds basic IBC modules and a complete client SDK.
+
+Features
+	•	On-chain modules
+	•	BurnProgram with fee burning, anomaly detection and bounties
+	•	TokenMintProgram for SPL token creation
+	•	GovernanceProgram for proposals, voting, execution
+	•	IBC light-client (initialize, update, verify)
+	•	IBC channel (open, close, send packet, receive packet stub)
+	•	Common support libraries
+	•	SolanaTypes, AccountInfo, syscalls, serialization, PDA seeds, sysvars, status codes
+	•	Native wrappers for SystemProgram, TokenProgram, and SolWrapper
+	•	Off-chain client modules
+	•	SolanaClient for JSON-RPC calls
+	•	GRPCClient stub for real-time subscriptions
+	•	DRPCClient for parallel RPC with endpoint failover
+	•	CMake build system producing a stripped BPF shared object
+
+Repository Layout
+	•	CMakeLists.txt
+	•	LICENSE (Apache-2.0)
+	•	README.md
+	•	Solc/
+	•	onchain/
+	•	burn/
+	•	BurnProgram.hpp
+	•	BurnProgram.cpp
+	•	token/
+	•	TokenMintProgram.hpp
+	•	TokenMintProgram.cpp
+	•	governance/
+	•	GovernanceProgram.hpp
+	•	GovernanceProgram.cpp
+	•	common/
+	•	SolanaTypes.hpp, SolanaTypes.cpp
+	•	AccountInfo.hpp, AccountInfo.cpp
+	•	Syscalls.hpp, Syscalls.cpp
+	•	Sysvar.hpp, Sysvar.cpp
+	•	Seed.hpp, Seed.cpp
+	•	Serialization.hpp, Serialization.cpp
+	•	StatusCodes.hpp, StatusCodes.cpp
+	•	native/
+	•	SystemProgram.hpp, SystemProgram.cpp
+	•	TokenProgram.hpp, TokenProgram.cpp
+	•	SolWrapper.hpp, SolWrapper.cpp
+	•	ibc/
+	•	IBCClient.hpp, IBCClient.cpp
+	•	IBCChannel.hpp, IBCChannel.cpp
+	•	offchain/
+	•	client/
+	•	SolanaClient.hpp, SolanaClient.cpp
+	•	GRPCClient.hpp, GRPCClient.cpp
+	•	DRPCClient.hpp, DRPCClient.cpp
+	•	include/solc/
+	•	Public headers for core modules
+
+Prerequisites
+	•	Linux or macOS
+	•	clang with BPF target support
+	•	solana-cli v1.10 or later
+	•	CMake 3.16 or higher
+
+Set environment variable for Solana SDK include path:
